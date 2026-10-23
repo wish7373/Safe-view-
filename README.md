@@ -139,7 +139,7 @@ small { color: #b7c2da; }
 "use strict";
 
 // Replace these two values with your own Supabase project details.
-const SUPABASE_URL = "https://ttknswttzxzsftowngkr.supabase.co/rest/v1/";
+const SUPABASE_URL = "https://ttknswttzxzsftowngkr.supabase.co";
 const SUPABASE_KEY = "sb_publishable_howesfkFfffCxF1J_QiBTw_xFht3crI";
 
 const $ = id => document.getElementById(id);
