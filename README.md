@@ -4,66 +4,149 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SafeView | Private PPT Upload</title>
+<meta name="referrer" content="no-referrer">
+<title>SafeView | Private PPT</title>
+
 <style>
-*{box-sizing:border-box}
-body{margin:0;font-family:Arial;background:#0b1020;color:#f5f7ff;line-height:1.6}
-header{text-align:center;padding:24px;border-bottom:1px solid #29334c}
-.logo{font-size:28px;font-weight:bold}
-.logo span{color:#7c9cff}
-main{width:min(700px,92%);margin:28px auto}
-.card{background:#151d32;border:1px solid #2b3651;padding:22px;border-radius:16px;margin-bottom:18px}
-input,button{width:100%;padding:12px;margin:7px 0;border-radius:8px}
-input{background:#202b43;color:white;border:1px solid #465472}
-button{background:#7c9cff;color:#081020;border:0;font-weight:bold;cursor:pointer}
-button:disabled{opacity:.5}
-.notice{background:#202b43;padding:12px;border-radius:8px;overflow-wrap:anywhere}
-small{color:#b7c2da}
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #0b1020;
+  color: #f5f7ff;
+  line-height: 1.6;
+}
+
+header {
+  text-align: center;
+  padding: 22px;
+  border-bottom: 1px solid #29334c;
+}
+
+.logo { font-size: 28px; font-weight: bold; }
+.logo span { color: #7c9cff; }
+
+main {
+  width: min(700px, 92%);
+  margin: 28px auto;
+}
+
+.card {
+  background: #151d32;
+  border: 1px solid #2b3651;
+  padding: 20px;
+  border-radius: 16px;
+  margin-bottom: 18px;
+}
+
+input, button {
+  display: block;
+  width: 100%;
+  padding: 13px;
+  margin: 10px 0;
+  border-radius: 9px;
+}
+
+input {
+  background: #202b43;
+  color: white;
+  border: 1px solid #465472;
+}
+
+button {
+  border: 0;
+  background: #7c9cff;
+  color: #081020;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.notice {
+  padding: 12px;
+  border-radius: 9px;
+  background: #202b43;
+  overflow-wrap: anywhere;
+}
+
+small { color: #b7c2da; }
+[hidden] { display: none !important; }
 </style>
 </head>
+
 <body>
 <header>
   <div class="logo">🔐 Safe<span>View</span></div>
-  Private PowerPoint Workspace
+  <div>Private PowerPoint Workspace</div>
 </header>
 
 <main>
-<section class="card">
-<h2>Account Login / Sign Up</h2>
-<input id="email" type="email" placeholder="Email address" autocomplete="email">
-<input id="password" type="password" placeholder="Password (minimum 8 characters)" autocomplete="current-password">
-<button id="signup">Create Account</button>
-<button id="login">Login</button>
-<button id="logout" hidden>Logout</button>
-<p id="authStatus" class="notice" aria-live="polite">Not logged in.</p>
-</section>
+  <section class="card">
+    <h2>Account Login / Sign Up</h2>
 
-<section class="card">
-<h2>Upload Private PPT</h2>
-<p><small>Login first. Maximum file size: 50 MB.</small></p>
-<input id="ppt" type="file" accept=".ppt,.pptx">
-<button id="upload" disabled>Upload to Private Storage</button>
-<p id="uploadStatus" class="notice" aria-live="polite">Choose a PPT file.</p>
-</section>
+    <label for="email">Email address</label>
+    <input id="email" type="email"
+      placeholder="Enter your email"
+      autocomplete="email">
 
-<section class="card">
-<h3>Security information</h3>
-<p><small>Files are uploaded to the private-ppts bucket. Storage policies must restrict access to the authenticated file owner. This prototype does not create secure sharing links or prevent copying after download.</small></p>
-</section>
+    <label for="password">Password</label>
+    <input id="password" type="password"
+      placeholder="At least 8 characters"
+      autocomplete="current-password">
+
+    <button id="signup" type="button">Create Account</button>
+    <button id="login" type="button">Login</button>
+    <button id="logout" type="button" hidden>Logout</button>
+
+    <p id="authStatus" class="notice" aria-live="polite">
+      Connecting to Supabase...
+    </p>
+  </section>
+
+  <section class="card">
+    <h2>📂 Upload Private PPT</h2>
+    <p><small>Login required. Maximum file size: 50 MB.</small></p>
+
+    <input id="ppt" type="file" accept=".ppt,.pptx">
+    <button id="upload" type="button" disabled>
+      Upload PPT
+    </button>
+
+    <p id="uploadStatus" class="notice" aria-live="polite">
+      Login before uploading.
+    </p>
+  </section>
+
+  <section class="card">
+    <h3>🔒 Privacy</h3>
+    <p><small>
+      Files are stored in the private-ppts bucket.
+      Storage RLS policies must restrict each user to their own folder.
+      Never put a Supabase secret or service_role key in this website.
+      This website does not prevent copying after an authorized download.
+    </small></p>
+  </section>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
-const SUPABASE_URL = "[YOUR_SUPABASE_URL](https://ttknswttzxzsftowngkr.supabase.co/rest/v1/)";
+"use strict";
+
+// Replace these two values with your own Supabase project details.
+const SUPABASE_URL = "https://ttknswttzxzsftowngkr.supabase.co/rest/v1/";
 const SUPABASE_KEY = "sb_publishable_howesfkFfffCxF1J_QiBTw_xFht3crI";
 
-const client = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
-);
-
 const $ = id => document.getElementById(id);
+
+let client = null;
 let currentUser = null;
+let busy = false;
 
 function authMessage(message) {
   $("authStatus").textContent = message;
@@ -73,101 +156,185 @@ function uploadMessage(message) {
   $("uploadStatus").textContent = message;
 }
 
-function showUser(user) {
-  currentUser = user;
-  $("upload").disabled = !user;
-  $("logout").hidden = !user;
-  $("login").hidden = !!user;
+function updateUI(user) {
+  currentUser = user || null;
+
   $("signup").hidden = !!user;
-  authMessage(user ? "Logged in: " + user.email : "Not logged in.");
+  $("login").hidden = !!user;
+  $("logout").hidden = !user;
+  $("upload").disabled = !user || busy;
+
+  if (user) {
+    authMessage("Logged in: " + user.email);
+  } else {
+    authMessage("Not logged in.");
+    uploadMessage("Login before uploading.");
+  }
 }
 
-async function refreshSession() {
-  const {data, error} = await client.auth.getSession();
-  if (error) authMessage(error.message);
-  showUser(data?.session?.user || null);
+function setBusy(value) {
+  busy = value;
+  $("signup").disabled = value;
+  $("login").disabled = value;
+  $("logout").disabled = value;
+  $("upload").disabled = value || !currentUser;
 }
 
-$("signup").onclick = async () => {
+async function runAction(action) {
+  if (busy) return;
+
+  setBusy(true);
+
+  try {
+    await action();
+  } catch (error) {
+    authMessage("Error: " + (error.message || "Something went wrong."));
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function startApp() {
+  if (!window.supabase) {
+    authMessage("Supabase library failed to load. Check your internet connection.");
+    return;
+  }
+
+  if (
+    !SUPABASE_URL.startsWith("https://") ||
+    SUPABASE_KEY === "PASTE_YOUR_SB_PUBLISHABLE_KEY_HERE" ||
+    !SUPABASE_KEY.startsWith("sb_publishable_")
+  ) {
+    authMessage("Setup required: enter your Project URL and sb_publishable key in the code.");
+    return;
+  }
+
+  client = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
+
+  const { data, error } = await client.auth.getSession();
+
+  if (error) {
+    authMessage("Session error: " + error.message);
+    return;
+  }
+
+  updateUI(data.session ? data.session.user : null);
+
+  client.auth.onAuthStateChange((_event, session) => {
+    updateUI(session ? session.user : null);
+  });
+}
+
+$("signup").addEventListener("click", () => runAction(async () => {
+  if (!client) throw new Error("Supabase is not configured.");
+
   const email = $("email").value.trim();
   const password = $("password").value;
+
   if (!email || password.length < 8) {
     authMessage("Enter a valid email and password of at least 8 characters.");
     return;
   }
 
-  const {data, error} = await client.auth.signUp({email, password});
-  if (error) return authMessage(error.message);
+  authMessage("Creating account...");
+
+  const { data, error } = await client.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: "https://wish7373.github.io/Safe-view-/"
+    }
+  });
+
+  if (error) throw error;
 
   if (data.session) {
-    showUser(data.session.user);
+    updateUI(data.session.user);
+    authMessage("Account created and logged in.");
   } else {
-    authMessage("Check your email to confirm your account, then log in.");
+    authMessage("Signup submitted. Check your email for confirmation, then log in.");
   }
-};
+}));
 
-$("login").onclick = async () => {
+$("login").addEventListener("click", () => runAction(async () => {
+  if (!client) throw new Error("Supabase is not configured.");
+
   const email = $("email").value.trim();
   const password = $("password").value;
-  if (!email || !password) return authMessage("Enter email and password.");
 
-  const {data, error} = await client.auth.signInWithPassword({
-    email, password
+  if (!email || !password) {
+    authMessage("Enter your email and password.");
+    return;
+  }
+
+  authMessage("Logging in...");
+
+  const { data, error } = await client.auth.signInWithPassword({
+    email,
+    password
   });
-  if (error) return authMessage(error.message);
-  showUser(data.user);
-};
 
-$("logout").onclick = async () => {
-  const {error} = await client.auth.signOut();
-  if (error) return authMessage(error.message);
-  showUser(null);
-  uploadMessage("Logged out.");
-};
+  if (error) throw error;
 
-$("upload").onclick = async () => {
-  if (!currentUser) return uploadMessage("Please log in first.");
+  updateUI(data.user);
+}));
+
+$("logout").addEventListener("click", () => runAction(async () => {
+  const { error } = await client.auth.signOut();
+
+  if (error) throw error;
+
+  updateUI(null);
+  uploadMessage("You have logged out.");
+}));
+
+$("upload").addEventListener("click", () => runAction(async () => {
+  if (!client || !currentUser) {
+    throw new Error("Please log in first.");
+  }
 
   const file = $("ppt").files[0];
-  if (!file) return uploadMessage("Choose a PPT file first.");
+
+  if (!file) {
+    uploadMessage("Choose a PPT file first.");
+    return;
+  }
 
   if (!/\.(ppt|pptx)$/i.test(file.name)) {
-    return uploadMessage("Only .ppt and .pptx files are accepted.");
+    uploadMessage("Only .ppt and .pptx files are allowed.");
+    return;
   }
 
   if (file.size > 50 * 1024 * 1024) {
-    return uploadMessage("File must be 50 MB or smaller.");
+    uploadMessage("File must be 50 MB or smaller.");
+    return;
   }
 
-  const ext = file.name.split(".").pop().toLowerCase();
-  const path = currentUser.id + "/" + crypto.randomUUID() + "." + ext;
+  // Random file name prevents accidental overwriting.
+  // User ID folder must be enforced by Storage RLS policies.
+  const extension = file.name.split(".").pop().toLowerCase();
+  const path = currentUser.id + "/" + crypto.randomUUID() + "." + extension;
 
-  $("upload").disabled = true;
   uploadMessage("Uploading...");
 
-  try {
-    const {data, error} = await client.storage
-      .from("private-ppts")
-      .upload(path, file, {
-        upsert: false,
-        contentType: file.type || "application/octet-stream"
-      });
+  const { data, error } = await client.storage
+    .from("private-ppts")
+    .upload(path, file, {
+      upsert: false,
+      contentType: file.type || "application/octet-stream"
+    });
 
-    if (error) throw error;
+  if (error) throw error;
 
-    uploadMessage("Upload successful. Private storage path: " + data.path);
-  } catch (error) {
-    uploadMessage("Upload failed: " + error.message);
-  } finally {
-    $("upload").disabled = !currentUser;
-  }
-};
+  uploadMessage("Upload successful. Private path: " + data.path);
+}));
 
-client.auth.onAuthStateChange((_event, session) => {
-  showUser(session?.user || null);
+startApp().catch(error => {
+  authMessage("Startup error: " + error.message);
 });
-refreshSession();
 </script>
 </body>
 </html>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
