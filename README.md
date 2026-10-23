@@ -166,8 +166,8 @@ $("upload").onclick = async () => {
 client.auth.onAuthStateChange((_event, session) => {
   showUser(session?.user || null);
 });
-
 refreshSession();
 </script>
 </body>
 </html>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
