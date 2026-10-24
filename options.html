@@ -32,22 +32,22 @@
     <div id="resultOutput" style="margin-top: 20px;"></div>
 
     <script>
-        // Supabase Initialization
-        const SUPABASE_URL = "https://ttknswttzxzsftowngkr.supabase.co/rest/v1/";
-        const SUPABASE_ANON_KEY = "sb_publishable_howesfkFfffCxF1J_QiBTw_xFht3crI";
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Supabase Initialization with your actual credentials
+        const SUPABASE_URL = "https://ttknswttzxzsftowngkr.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_howesfkFfffCxF1J_QiBTw_xFht3crI";
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function generateSecureLink() {
             const urlParams = new URLSearchParams(window.location.search);
             const filePath = urlParams.get('path');
 
             if (!filePath) {
-                alert("File path is missing!");
+                alert("File path is missing! Please upload a file from the main page first.");
                 return;
             }
 
             const oneTimeOpen = document.getElementById('oneTimeOpen').checked;
-            const forwardStop = document.getElementById('forwardStop').checked;
+            const forwardStop = document.getElementById('forwardStop'].checked;
             const ssBlock = document.getElementById('ssBlock').checked;
             const expiryTime = document.getElementById('expiryTime').value;
 
@@ -70,7 +70,7 @@
 
             if (error) {
                 console.error("Error saving settings:", error);
-                alert("Failed to generate link.");
+                alert("Failed to generate link: " + error.message);
                 return;
             }
 
