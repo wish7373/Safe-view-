@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link Security Options</title>
+    <!-- Supabase JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h2>Configure Link Protection Settings</h2>
+
+    <label>
+        <input type="checkbox" id="oneTimeOpen"> One-time View Only
+    </label><br><br>
+
+    <label>
+        <input type="checkbox" id="forwardStop"> Restrict Forwarding
+    </label><br><br>
+
+    <label>
+        <input type="checkbox" id="ssBlock"> Block Screenshot / Print Screen
+    </label><br><br>
+
+    <label>
+        Link Expiry Time: 
+        <input type="datetime-local" id="expiryTime">
+    </label><br><br>
+
+    <button onclick="generateSecureLink()">Generate Secure Link</button>
+
+    <div id="resultOutput" style="margin-top: 20px;"></div>
+
+    <script>
+        // Supabase Initialization
+        const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+        const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        async function generateSecureLink() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const filePath = urlParams.get('path');
+
+            if (!filePath) {
+                alert("File path is missing!");
+                return;
+            }
+
+            const oneTimeOpen = document.getElementById('oneTimeOpen').checked;
+            const forwardStop = document.getElementById('forwardStop').checked;
+            const ssBlock = document.getElementById('ssBlock').checked;
+            const expiryTime = document.getElementById('expiryTime').value;
+
+            // Generate Random ID
+            const uniqueId = Math.random().toString(36).substring(2, 10);
+
+            // Save configuration to Supabase Database
+            const { data, error } = await supabase
+                .from('secure_links')
+                .insert([
+                    { 
+                        id: uniqueId, 
+                        file_path: filePath, 
+                        one_time_open: oneTimeOpen, 
+                        forward_stop: forwardStop, 
+                        ss_block: ssBlock, 
+                        expiry_time: expiryTime ? new Date(expiryTime).toISOString() : null 
+                    }
+                ]);
+
+            if (error) {
+                console.error("Error saving settings:", error);
+                alert("Failed to generate link.");
+                return;
+            }
+
+            const finalUrl = window.location.origin + "/view.html?id=" + uniqueId;
+            document.getElementById('resultOutput').innerHTML = `
+                <p><strong>Your Secure Link is Ready:</strong></p>
+                <input type="text" value="${finalUrl}" readonly style="width: 80%;">
+                <button onclick="navigator.clipboard.writeText('${finalUrl}')">Copy Link</button>
+            `;
+        }
+    </script>
+</body>
+</html>
