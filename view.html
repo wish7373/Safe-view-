@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Document Viewer</title>
+    <!-- Supabase JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: Arial, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Secure View</h2>
+        <div id="contentArea">Loading secure content...</div>
+    </div>
+
+    <script>
+        // Replace with your Supabase credentials
+        const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+        const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        async function loadContent() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const linkId = urlParams.get('id');
+
+            if (!linkId) {
+                document.getElementById('contentArea').innerText = "Invalid Link.";
+                return;
+            }
+
+            // Fetch settings from Supabase database
+            const { data, error } = await supabase
+                .from('secure_links')
+                .select('*')
+                .eq('id', linkId)
+                .single();
+
+            if (error || !data) {
+                document.getElementById('contentArea').innerText = "Link not found or access denied.";
+                return;
+            }
+
+            // 1. Check Expiry Time
+            if (data.expiry_time && new Date() > new Date(data.expiry_time)) {
+                document.getElementById('contentArea').innerText = "This link has expired.";
+                return;
+            }
+
+            // 2. Check One Time Open
+            if (data.one_time_open && data.views_count >= 1) {
+                document.getElementById('contentArea').innerText = "This link has already been opened once and is now closed.";
+                return;
+            }
+
+            // Increment View Count in database
+            await supabase
+                .from('secure_links')
+                .update({ views_count: data.views_count + 1 })
+                .eq('id', linkId);
+
+            // 3. Screenshot & Right-Click Protection
+            if (data.ss_block) {
+                document.addEventListener('contextmenu', e => e.preventDefault());
+                document.addEventListener('keydown', e => {
+                    if (e.key === "PrintScreen" || (e.ctrlKey && (e.key === 'p' || e.key === 's' || e.key === 'c'))) {
+                        alert("Action blocked by security settings.");
+                        e.preventDefault();
+                    }
+                });
+            }
+
+            // Display File Path or Download Link
+            document.getElementById('contentArea').innerHTML = `
+                <p><strong>Access Granted</strong></p>
+                <p>File Path: ${data.file_path}</p>
+            `;
+        }
+
+        loadContent();
+    </script>
+</body>
+</html>
