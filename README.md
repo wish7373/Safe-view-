@@ -329,6 +329,12 @@ $("upload").addEventListener("click", () => runAction(async () => {
 
   if (error) throw error;
 
+  uploadMessage("Upload successful. Redirecting...");
+
+  // Redirect to options.html with the file path
+  window.location.href = "options.html?path=" + encodeURIComponent(data.path);
+    
+
   uploadMessage("Upload successful. Private path: " + data.path);
 }));
 
