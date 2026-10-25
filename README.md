@@ -140,7 +140,7 @@ small { color: #b7c2da; }
 
 // Replace these two values with your own Supabase project details.
 const SUPABASE_URL = "https://ttknswttzxzsftowngkr.supabase.co";
-const SUPABASE_KEY = "PASTE_YOUR_SB_PUBLISHABLE_KEY_HERE";
+const SUPABASE_KEY = "sb_publishable_howesfkFfffCxF1J_QiBTw_xFht3crI";
 
 const $ = id => document.getElementById(id);
 
