@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -137,8 +138,9 @@ small { color: #b7c2da; }
 <script>
 "use strict";
 
+// Replace these two values with your own Supabase project details.
 const SUPABASE_URL = "https://ttknswttzxzsftowngkr.supabase.co";
-const SUPABASE_KEY = "sb_publishable_howesfkFfffCxF1J_QiBTw_xFht3crI";
+const SUPABASE_KEY = "PASTE_YOUR_SB_PUBLISHABLE_KEY_HERE";
 
 const $ = id => document.getElementById(id);
 
@@ -180,7 +182,9 @@ function setBusy(value) {
 
 async function runAction(action) {
   if (busy) return;
+
   setBusy(true);
+
   try {
     await action();
   } catch (error) {
@@ -192,13 +196,26 @@ async function runAction(action) {
 
 async function startApp() {
   if (!window.supabase) {
-    authMessage("Supabase library failed to load.");
+    authMessage("Supabase library failed to load. Check your internet connection.");
     return;
   }
 
-  client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  if (
+    !SUPABASE_URL.startsWith("https://") ||
+    SUPABASE_KEY === "PASTE_YOUR_SB_PUBLISHABLE_KEY_HERE" ||
+    !SUPABASE_KEY.startsWith("sb_publishable_")
+  ) {
+    authMessage("Setup required: enter your Project URL and sb_publishable key in the code.");
+    return;
+  }
+
+  client = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
 
   const { data, error } = await client.auth.getSession();
+
   if (error) {
     authMessage("Session error: " + error.message);
     return;
@@ -213,6 +230,7 @@ async function startApp() {
 
 $("signup").addEventListener("click", () => runAction(async () => {
   if (!client) throw new Error("Supabase is not configured.");
+
   const email = $("email").value.trim();
   const password = $("password").value;
 
@@ -222,19 +240,28 @@ $("signup").addEventListener("click", () => runAction(async () => {
   }
 
   authMessage("Creating account...");
-  const { data, error } = await client.auth.signUp({ email, password });
+
+  const { data, error } = await client.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: "https://wish7373.github.io/Safe-view-/"
+    }
+  });
+
   if (error) throw error;
 
   if (data.session) {
     updateUI(data.session.user);
     authMessage("Account created and logged in.");
   } else {
-    authMessage("Signup submitted. Check your email for confirmation.");
+    authMessage("Signup submitted. Check your email for confirmation, then log in.");
   }
 }));
 
 $("login").addEventListener("click", () => runAction(async () => {
   if (!client) throw new Error("Supabase is not configured.");
+
   const email = $("email").value.trim();
   const password = $("password").value;
 
@@ -244,7 +271,12 @@ $("login").addEventListener("click", () => runAction(async () => {
   }
 
   authMessage("Logging in...");
-  const { data, error } = await client.auth.signInWithPassword({ email, password });
+
+  const { data, error } = await client.auth.signInWithPassword({
+    email,
+    password
+  });
+
   if (error) throw error;
 
   updateUI(data.user);
@@ -252,7 +284,9 @@ $("login").addEventListener("click", () => runAction(async () => {
 
 $("logout").addEventListener("click", () => runAction(async () => {
   const { error } = await client.auth.signOut();
+
   if (error) throw error;
+
   updateUI(null);
   uploadMessage("You have logged out.");
 }));
@@ -263,6 +297,7 @@ $("upload").addEventListener("click", () => runAction(async () => {
   }
 
   const file = $("ppt").files[0];
+
   if (!file) {
     uploadMessage("Choose a PPT file first.");
     return;
@@ -278,6 +313,8 @@ $("upload").addEventListener("click", () => runAction(async () => {
     return;
   }
 
+  // Random file name prevents accidental overwriting.
+  // User ID folder must be enforced by Storage RLS policies.
   const extension = file.name.split(".").pop().toLowerCase();
   const path = currentUser.id + "/" + crypto.randomUUID() + "." + extension;
 
@@ -293,9 +330,6 @@ $("upload").addEventListener("click", () => runAction(async () => {
   if (error) throw error;
 
   uploadMessage("Upload successful. Private path: " + data.path);
-
-  // Redirect to options page after successful upload
-  window.location.href = "options.html?path=" + encodeURIComponent(data.path);
 }));
 
 startApp().catch(error => {
