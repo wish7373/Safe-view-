@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Link Security Options</title>
     <!-- Supabase JS Library -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
 </head>
 <body>
     <h2>Configure Link Protection Settings</h2>
@@ -35,7 +35,7 @@
         // Supabase Initialization with your actual credentials
         const SUPABASE_URL = "https://ttknswttzxzsftowngkr.supabase.co";
         const SUPABASE_KEY = "sb_publishable_howesfkFfffCxF1J_QiBTw_xFht3crI";
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function generateSecureLink() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -55,7 +55,7 @@
             const uniqueId = Math.random().toString(36).substring(2, 10);
 
             // Save configuration to Supabase Database
-            const { data, error } = await supabase
+            const { data, error } = await sb
                 .from('secure_links')
                 .insert([
                     { 
@@ -74,7 +74,7 @@
                 return;
             }
 
-            const finalUrl = window.location.origin + "/view.html?id=" + uniqueId;
+            const finalUrl = new URL("view.html?id=" + uniqueId, window.location.href).href;
             document.getElementById('resultOutput').innerHTML = `
                 <p><strong>Your Secure Link is Ready:</strong></p>
                 <input type="text" value="${finalUrl}" readonly style="width: 80%;">
