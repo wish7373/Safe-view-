@@ -33,9 +33,9 @@
 
     <script>
         // Replace with your Supabase credentials
-        const SUPABASE_URL = "https://ttknswttzxzsftowngkr.supabase.co/rest/v1/";
+        const SUPABASE_URL = "https://ttknswttzxzsftowngkr.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_howesfkFfffCxF1J_QiBTw_xFht3crI";
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         async function loadContent() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -47,7 +47,7 @@
             }
 
             // Fetch settings from Supabase database
-            const { data, error } = await supabase
+            const { data, error } = await sb
                 .from('secure_links')
                 .select('*')
                 .eq('id', linkId)
@@ -71,7 +71,7 @@
             }
 
             // Increment View Count in database
-            await supabase
+            await sb
                 .from('secure_links')
                 .update({ views_count: data.views_count + 1 })
                 .eq('id', linkId);
