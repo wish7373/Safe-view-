@@ -65,7 +65,7 @@
 
             // 1. Upload to private Supabase Storage bucket
             const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('your-private-bucket-name')
+                .from('private-ppts')
                 .upload(filePath, file);
 
             if (uploadError) {
