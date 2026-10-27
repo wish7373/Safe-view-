@@ -94,7 +94,7 @@
 
             // 4. Generate a 60-SECOND SIGNED URL from the private bucket
             const { data: signedData, error: signedError } = await supabase.storage
-                .from('your-private-bucket-name')
+                .from('private-ppts')
                 .createSignedUrl(linkRecord.file_path, 60); // Expires in 60 seconds
 
             if (signedError || !signedData) {
