@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Secure Document</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; }
+        .notice { background: #fff3cd; color: #856404; padding: 12px; border: 1px solid #ffeeba; border-radius: 4px; margin-bottom: 20px; font-size: 14px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="file"] { width: 100%; padding: 8px; box-sizing: border-box; }
+        button { background: #007bff; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 4px; width: 100%; }
+        button:hover { background: #0056b3; }
+        #status { margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h2>Upload Secure PDF Document</h2>
+
+    <!-- Notice for PPT conversion -->
+    <div class="notice">
+        📌 <strong>Note:</strong> Please convert your PowerPoint (PPT/PPTX) files to PDF before uploading. Only PDF files are accepted.
+    </div>
+
+    <div class="form-group">
+        <label for="pdfFile">Select PDF File:</label>
+        <input type="file" id="pdfFile" accept=".pdf">
+    </div>
+
+    <button onclick="uploadFile()">Upload & Generate Secure Link</button>
+    <p id="status"></p>
+
+    <script>
+        // Initialize Supabase (Replace with your actual credentials)
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('pdfFile');
+            const status = document.getElementById('status');
+
+            if (fileInput.files.length === 0) {
+                status.style.color = 'red';
+                status.textContent = 'Please select a PDF file first.';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            
+            // Double check file type
+            if (file.type !== 'application/pdf') {
+                status.style.color = 'red';
+                status.textContent = 'Only PDF files are allowed!';
+                return;
+            }
+
+            status.style.color = 'blue';
+            status.textContent = 'Uploading...';
+
+            const filePath = `secure-docs/${Date.now()}_${file.name}`;
+
+            // 1. Upload to private Supabase Storage bucket
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('your-private-bucket-name')
+                .upload(filePath, file);
+
+            if (uploadError) {
+                status.style.color = 'red';
+                status.textContent = 'Upload failed: ' + uploadError.message;
+                return;
+            }
+
+            // 2. Save metadata & file path to secure_links table
+            const token = crypto.randomUUID(); // Unique token for the secure link
+            const { error: dbError } = await supabase
+                .from('secure_links')
+                .insert([
+                    { 
+                        token: token, 
+                        file_path: uploadData.path, 
+                        is_viewed: false, 
+                        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000) // Example expiry
+                    }
+                ]);
+
+            if (dbError) {
+                status.style.color = 'red';
+                status.textContent = 'Database error: ' + dbError.message;
+                return;
+            }
+
+            status.style.color = 'green';
+            const secureLink = `${window.location.origin}/view.html?token=${token}`;
+            status.innerHTML = `Success! Secure Link: <a href="${secureLink}" target="_blank">${secureLink}</a>`;
+        }
+    </script>
+</body>
+</html>
