@@ -1,86 +1,84 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Link Security Options</title>
-    <!-- Supabase JS Library -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Link Settings</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
+<style>
+body{font-family:Arial,sans-serif;max-width:500px;margin:30px auto;padding:20px}
+label{display:block;margin:14px 0 6px}
+input[type=datetime-local],input[type=text]{width:100%;padding:10px;box-sizing:border-box}
+button{padding:12px 16px;margin-top:16px;font-size:16px;width:100%}
+#out{margin-top:20px;word-break:break-all}
+.err{color:#c00}.ok{color:#080}
+</style>
 </head>
 <body>
-    <h2>Configure Link Protection Settings</h2>
+<h2>Secure link settings</h2>
 
-    <label>
-        <input type="checkbox" id="oneTimeOpen"> One-time View Only
-    </label><br><br>
+<label><input type="checkbox" id="oneTime" checked> One-time view only</label>
 
-    <label>
-        <input type="checkbox" id="forwardStop"> Restrict Forwarding
-    </label><br><br>
+<label>Link expires at (max 7 days from now):
+<input type="datetime-local" id="expiry"></label>
 
-    <label>
-        <input type="checkbox" id="ssBlock"> Block Screenshot / Print Screen
-    </label><br><br>
+<button id="gen">Generate secure link</button>
+<div id="out"></div>
 
-    <label>
-        Link Expiry Time: 
-        <input type="datetime-local" id="expiryTime">
-    </label><br><br>
+<script>
+const SUPABASE_URL = "https://ttknswttzxzsftowngkr.supabase.co";
+const SUPABASE_KEY = "sb_publishable_howesfkFfffCxF1J_QiBTw_xFht3crI";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const out = document.getElementById("out");
+const MAX = 7*24*60*60; // seconds
 
-    <button onclick="generateSecureLink()">Generate Secure Link</button>
+// default expiry: 24 hours from now
+(function(){
+  const d = new Date(Date.now()+24*3600*1000 - new Date().getTimezoneOffset()*60000);
+  document.getElementById("expiry").value = d.toISOString().slice(0,16);
+})();
 
-    <div id="resultOutput" style="margin-top: 20px;"></div>
+function show(msg, cls){ out.className = cls||""; out.textContent = msg; }
 
-    <script>
-        // Supabase Initialization with your actual credentials
-        const SUPABASE_URL = "https://ttknswttzxzsftowngkr.supabase.co";
-        const SUPABASE_KEY = "sb_publishable_howesfkFfffCxF1J_QiBTw_xFht3crI";
-        const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+document.getElementById("gen").onclick = async () => {
+  const path = new URLSearchParams(location.search).get("path");
+  if(!path) return show("File path missing. Upload a PDF from the main page first.","err");
 
-        async function generateSecureLink() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const filePath = urlParams.get('path');
+  const {data:s} = await sb.auth.getSession();
+  if(!s.session) return show("Please sign in on the main page first.","err");
 
-            if (!filePath) {
-                alert("File path is missing! Please upload a file from the main page first.");
-                return;
-            }
+  const expVal = document.getElementById("expiry").value;
+  let expires = expVal ? new Date(expVal) : new Date(Date.now()+24*3600*1000);
+  let seconds = Math.floor((expires - Date.now())/1000);
+  if(seconds < 60) return show("Expiry must be in the future.","err");
+  if(seconds > MAX){ seconds = MAX; expires = new Date(Date.now()+MAX*1000); }
 
-            const oneTimeOpen = document.getElementById('oneTimeOpen').checked;
-            const forwardStop = document.getElementById('forwardStop').checked;
-            const ssBlock = document.getElementById('ssBlock').checked;
-            const expiryTime = document.getElementById('expiryTime').value;
+  show("Creating link…");
+  const {data:signed, error:e1} = await sb.storage.from("private-ppts").createSignedUrl(path, seconds);
+  if(e1) return show("Could not secure file: "+e1.message,"err");
 
-            // Generate Random ID
-            const uniqueId = Math.random().toString(36).substring(2, 10);
+  const token = crypto.randomUUID();
+  const {error:e2} = await sb.from("secure_links").insert([{
+    token: token,
+    file_path: path,
+    signed_url: signed.signedUrl,
+    one_time_open: document.getElementById("oneTime").checked,
+    is_viewed: false,
+    expires_at: expires.toISOString(),
+    owner_id: s.session.user.id
+  }]);
+  if(e2) return show("Database error: "+e2.message,"err");
 
-            // Save configuration to Supabase Database
-            const { data, error } = await sb
-                .from('secure_links')
-                .insert([
-                    { 
-                        id: uniqueId, 
-                        file_path: filePath, 
-                        one_time_open: oneTimeOpen, 
-                        forward_stop: forwardStop, 
-                        ss_block: ssBlock, 
-                        expiry_time: expiryTime ? new Date(expiryTime).toISOString() : null 
-                    }
-                ]);
-
-            if (error) {
-                console.error("Error saving settings:", error);
-                alert("Failed to generate link: " + error.message);
-                return;
-            }
-
-            const finalUrl = new URL("view.html?id=" + uniqueId, window.location.href).href;
-            document.getElementById('resultOutput').innerHTML = `
-                <p><strong>Your Secure Link is Ready:</strong></p>
-                <input type="text" value="${finalUrl}" readonly style="width: 80%;">
-                <button onclick="navigator.clipboard.writeText('${finalUrl}')">Copy Link</button>
-            `;
-        }
-    </script>
+  const link = new URL("view.html?token="+token, location.href).href;
+  out.className = "ok";
+  out.innerHTML = "<p><b>Your secure link:</b></p>";
+  const inp = document.createElement("input");
+  inp.type="text"; inp.readOnly=true; inp.value=link;
+  const btn = document.createElement("button");
+  btn.textContent="Copy link";
+  btn.onclick = () => navigator.clipboard.writeText(link).then(()=>btn.textContent="Copied!");
+  out.append(inp, btn);
+};
+</script>
 </body>
 </html>
