@@ -1,169 +1,79 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Document Viewer</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Include PDF.js library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>
-        // Configure PDF.js worker
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    </script>
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f9; margin: 0; padding: 20px; }
-        #viewer-container { margin-top: 20px; display: inline-block; box-shadow: 0 4px 8px rgba(0,0,0,0.1); background: white; padding: 10px; border-radius: 4px; }
-        canvas { display: block; margin: 0 auto; max-width: 100%; height: auto; }
-        #controls { margin-top: 15px; }
-        button { padding: 8px 15px; margin: 0 5px; cursor: pointer; }
-        #error-msg { color: red; font-size: 18px; font-weight: bold; margin-top: 50px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Secure Document Viewer</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+body{font-family:Arial,sans-serif;text-align:center;background:#f4f4f9;margin:0;padding:16px}
+#wrap{display:none}
+canvas{max-width:100%;height:auto;background:#fff;box-shadow:0 4px 8px rgba(0,0,0,.15)}
+button{padding:10px 16px;margin:10px 6px;font-size:16px}
+#err{color:#c00;font-size:18px;font-weight:bold;margin-top:40px}
+</style>
 </head>
 <body>
+<h2>Secure Document Viewer</h2>
+<div id="err"></div>
+<div id="wrap">
+  <div><button id="prev">Previous</button>
+  <span><span id="num">1</span> / <span id="count">1</span></span>
+  <button id="next">Next</button></div>
+  <canvas id="c"></canvas>
+</div>
 
-    <h2>Secure Document Viewer</h2>
-    <div id="error-msg"></div>
-    
-    <div id="viewer-container" style="display: none;">
-        <div id="controls">
-            <button id="prev-page" onclick="onPrevPage()">Previous</button>
-            <span>Page: <span id="page-num"></span> / <span id="page-count"></span></span>
-            <button id="next-page" onclick="onNextPage()">Next</button>
-        </div>
-        <canvas id="pdf-canvas"></canvas>
-    </div>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-    <script>
-        // Initialize Supabase (Replace with your actual credentials)
-        const SUPABASE_URL = 'https://ttknswttzxzsftowngkr.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_howesfkFfffCxF1J_QiBTw_xFht3crI';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL = "https://ttknswttzxzsftowngkr.supabase.co";
+const SUPABASE_KEY = "sb_publishable_howesfkFfffCxF1J_QiBTw_xFht3crI";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let pdfDoc = null,
-            pageNum = 1,
-            pageRendering = false,
-            pageNumPending = null,
-            scale = 1.5,
-            canvas = document.getElementById('pdf-canvas'),
-            ctx = canvas.getContext('2d');
+const err = document.getElementById("err");
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+let pdf = null, page = 1;
 
-        async function initViewer() {
-            const errorDiv = document.getElementById('error-msg');
-            const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get('token');
+function fail(m){ err.textContent = m; document.getElementById("wrap").style.display="none"; }
 
-            if (!token) {
-                errorDiv.textContent = 'Invalid or missing secure link token.';
-                return;
-            }
+async function render(n){
+  const p = await pdf.getPage(n);
+  const base = p.getViewport({scale:1});
+  const maxW = Math.min(window.innerWidth-32, 900);
+  const vp = p.getViewport({scale: maxW/base.width});
+  canvas.width = vp.width; canvas.height = vp.height;
+  await p.render({canvasContext:ctx, viewport:vp}).promise;
+  document.getElementById("num").textContent = n;
+}
 
-            // 1. Fetch link record from secure_links table
-            const { data: linkRecord, error: fetchError } = await supabase
-                .from('secure_links')
-                .select('*')
-                .eq('token', token)
-                .single();
+document.getElementById("prev").onclick = () => { if(page>1) render(--page); };
+document.getElementById("next").onclick = () => { if(pdf && page<pdf.numPages) render(++page); };
 
-            if (fetchError || !linkRecord) {
-                errorDiv.textContent = 'Link not found or has expired.';
-                return;
-            }
+(async function(){
+  const token = new URLSearchParams(location.search).get("token");
+  if(!token) return fail("Invalid or missing link.");
 
-            // 2. Check one-time-view and expiration settings
-            if (linkRecord.is_viewed) {
-                errorDiv.textContent = 'This document has already been viewed and is no longer accessible (One-time view limit reached).';
-                return;
-            }
+  const {data:rec, error} = await sb.from("secure_links").select("*").eq("token", token).maybeSingle();
+  if(error || !rec) return fail("Link not found or expired.");
+  if(rec.expires_at && new Date(rec.expires_at) < new Date()) return fail("This link has expired.");
+  if(rec.one_time_open && rec.is_viewed) return fail("This document was already viewed (one-time link).");
 
-            if (linkRecord.expires_at && new Date(linkRecord.expires_at) < new Date()) {
-                errorDiv.textContent = 'This link has expired.';
-                return;
-            }
+  if(rec.one_time_open){
+    const {error:u} = await sb.from("secure_links").update({is_viewed:true}).eq("token", token);
+    if(u) return fail("Could not secure this session.");
+  }
 
-            // 3. Mark link as viewed immediately (Enforces one-time view)
-            const { error: updateError } = await supabase
-                .from('secure_links')
-                .update({ is_viewed: true })
-                .eq('token', token);
-
-            if (updateError) {
-                errorDiv.textContent = 'Error securing document session.';
-                return;
-            }
-
-            // 4. Generate a 60-SECOND SIGNED URL from the private bucket
-            const { data: signedData, error: signedError } = await supabase.storage
-                .from('private-ppts')
-                .createSignedUrl(linkRecord.file_path, 60); // Expires in 60 seconds
-
-            if (signedError || !signedData) {
-                errorDiv.textContent = 'Could not generate secure file access.';
-                return;
-            }
-
-            // 5. Show viewer container and load PDF via PDF.js using the temporary signed URL
-            document.getElementById('viewer-container').style.display = 'inline-block';
-            loadPDF(signedData.signedUrl);
-        }
-
-        function loadPDF(url) {
-            pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
-                pdfDoc = pdfDoc_;
-                document.getElementById('page-count').textContent = pdfDoc.numPages;
-                renderPage(pageNum);
-            }).catch(function(error) {
-                document.getElementById('error-msg').textContent = 'Failed to load PDF document.';
-                document.getElementById('viewer-container').style.display = 'none';
-            });
-        }
-
-        function renderPage(num) {
-            pageRendering = true;
-            pdfDoc.getPage(num).then(function(page) {
-                var viewport = page.getViewport({ scale: scale });
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-
-                var renderContext = {
-                    canvasContext: ctx,
-                    viewport: viewport
-                };
-                var renderTask = page.render(renderContext);
-
-                renderTask.promise.then(function() {
-                    pageRendering = false;
-                    if (pageNumPending !== null) {
-                        renderPage(pageNumPending);
-                        pageNumPending = null;
-                    }
-                });
-            });
-            document.getElementById('page-num').textContent = num;
-        }
-
-        function queueRenderPage(num) {
-            if (pageRendering) {
-                pageNumPending = num;
-            } else {
-                renderPage(num);
-            }
-        }
-
-        function onPrevPage() {
-            if (pageNum <= 1) return;
-            pageNum--;
-            queueRenderPage(pageNum);
-        }
-
-        function onNextPage() {
-            if (pageNum >= pdfDoc.numPages) return;
-            pageNum++;
-            queueRenderPage(pageNum);
-        }
-
-        // Run verification on page load
-        initViewer();
-    </script>
+  try{
+    pdf = await pdfjsLib.getDocument(rec.signed_url).promise;
+  }catch(e){
+    return fail("Could not load the document.");
+  }
+  document.getElementById("count").textContent = pdf.numPages;
+  document.getElementById("wrap").style.display = "block";
+  render(1);
+})();
+</script>
 </body>
 </html>
